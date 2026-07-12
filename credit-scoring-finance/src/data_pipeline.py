@@ -1,7 +1,11 @@
 """Nettoyage, feature engineering et split pour le dataset Give Me Some Credit."""
+import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import RobustScaler
+
+pd.set_option("display.max_columns", None)
+pd.set_option("display.width", 160)
 
 RAW_PATH = "data/raw/cs-training.csv"
 TRAIN_PATH = "data/processed/train.csv"
@@ -122,8 +126,6 @@ def print_cleaning_summary(n_before_dedup, n_after_dedup, train_df, test_df):
 
 
 def add_features(df: pd.DataFrame) -> pd.DataFrame:
-    import numpy as np
-
     df = df.copy()
     df["DebtRatio_log"] = np.log1p(df["DebtRatio"].clip(lower=0))
     df["MonthlyIncome_log"] = np.log1p(df["MonthlyIncome"].clip(lower=0))
@@ -142,6 +144,35 @@ def scale(train_df: pd.DataFrame, test_df: pd.DataFrame, scale_cols: list):
     train_df[scale_cols] = scaler.fit_transform(train_df[scale_cols])
     test_df[scale_cols] = scaler.transform(test_df[scale_cols])
     return train_df, test_df
+
+
+SCALE_COLS = ["MonthlyIncome_log", "DebtRatio_log", "age"]
+
+
+def print_feature_engineering_summary(before_df, after_scaled_df, preview_cols, scale_cols):
+    new_cols = [c for c in after_scaled_df.columns if c not in before_df.columns]
+
+    print("=" * 80)
+    print("RESUME DU FEATURE ENGINEERING + SCALING")
+    print("=" * 80)
+
+    print(f"\nColonnes creees par add_features() : {new_cols}")
+
+    print("\nApercu AVANT add_features (colonnes sources, 5 premieres lignes du train) :")
+    print(before_df[["DebtRatio", "MonthlyIncome"] + LATE_COLS].head())
+
+    print("\nApercu APRES add_features + scaling (nouvelles colonnes, 5 premieres lignes du train) :")
+    print(after_scaled_df[preview_cols].head())
+
+    print(f"\nColonnes mises a l'echelle (RobustScaler, fit sur train uniquement) : {scale_cols}")
+    print("\nStatistiques AVANT scaling (train) :")
+    print(before_df.assign(
+        DebtRatio_log=lambda d: np.log1p(d["DebtRatio"].clip(lower=0)),
+        MonthlyIncome_log=lambda d: np.log1p(d["MonthlyIncome"].clip(lower=0)),
+    )[scale_cols].describe())
+    print("\nStatistiques APRES scaling (train) :")
+    print(after_scaled_df[scale_cols].describe())
+    print("=" * 80)
 
 
 def main():
@@ -163,8 +194,18 @@ def main():
 
     print_cleaning_summary(n_before_dedup, n_after_dedup, train_clean, test_clean)
 
-    # Feature engineering avance (log-transform, Hour, etc.) et scaling :
-    # etape suivante, une fois ce nettoyage valide.
+    # Feature engineering (log-transform, TotalPastDue) puis scaling (fit sur train uniquement).
+    train_feat = add_features(train_clean)
+    test_feat = add_features(test_clean)
+
+    train_scaled, test_scaled = scale(train_feat, test_feat, SCALE_COLS)
+
+    preview_cols = ["DebtRatio", "DebtRatio_log", "MonthlyIncome", "MonthlyIncome_log", "age", "TotalPastDue"]
+    print_feature_engineering_summary(train_clean, train_scaled, preview_cols, SCALE_COLS)
+
+    print(f"\nTrain final : {train_scaled.shape}, Test final : {test_scaled.shape}")
+
+    # Sauvegarde CSV et suite (modelisation) : etape suivante, une fois cette partie validee.
 
 
 if __name__ == "__main__":
