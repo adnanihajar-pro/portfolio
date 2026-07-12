@@ -9,31 +9,116 @@ TEST_PATH = "data/processed/test.csv"
 
 TARGET = "SeriousDlqin2yrs"
 
+LATE_COLS = [
+    "NumberOfTime30-59DaysPastDueNotWorse",
+    "NumberOfTime60-89DaysPastDueNotWorse",
+    "NumberOfTimes90DaysLate",
+]
+
 
 def load_raw(path: str = RAW_PATH) -> pd.DataFrame:
     df = pd.read_csv(path, index_col=0)
     return df
 
 
-def clean(df: pd.DataFrame) -> pd.DataFrame:
-    df = df.drop_duplicates()
+def clean_data(df: pd.DataFrame, stats: dict | None = None) -> tuple[pd.DataFrame, dict]:
+    """Nettoie un DataFrame (train ou test).
 
-    # MonthlyIncome et NumberOfDependents ont des valeurs manquantes dans ce dataset
-    df["MonthlyIncome"] = df["MonthlyIncome"].fillna(df["MonthlyIncome"].median())
-    df["NumberOfDependents"] = df["NumberOfDependents"].fillna(
-        df["NumberOfDependents"].median()
-    )
+    Si `stats` est None, ce df est traité comme le train : les médianes sont
+    calculées dessus et retournées dans `stats`. Si `stats` est fourni (cas du
+    test), les médianes du train sont réutilisées telles quelles, sans être
+    recalculées, pour éviter toute fuite de données train -> test.
+    """
+    df = df.copy()
+    is_train = stats is None
+    if is_train:
+        stats = {}
 
-    # Valeurs sentinelles connues du dataset (96/98) pour les compteurs de retard
-    late_cols = [
-        "NumberOfTime30-59DaysPastDueNotWorse",
-        "NumberOfTime60-89DaysPastDueNotWorse",
-        "NumberOfTimes90DaysLate",
-    ]
-    for col in late_cols:
-        df[col] = df[col].clip(upper=df[col].quantile(0.999))
+    # --- 2. Valeurs manquantes : indicateur AVANT imputation, médiane du train ---
+    df["MonthlyIncome_missing"] = df["MonthlyIncome"].isna().astype(int)
+    if is_train:
+        stats["monthly_income_median"] = df["MonthlyIncome"].median()
+    df["MonthlyIncome"] = df["MonthlyIncome"].fillna(stats["monthly_income_median"])
 
-    return df
+    df["NumberOfDependents_missing"] = df["NumberOfDependents"].isna().astype(int)
+    if is_train:
+        stats["dependents_median"] = df["NumberOfDependents"].median()
+    df["NumberOfDependents"] = df["NumberOfDependents"].fillna(stats["dependents_median"])
+
+    # --- 4. Flags d'incohérence, calculés AVANT le plafonnement (3a / 3d) ---
+    df["is_inconsistent_utilization"] = (
+        (df["NumberOfOpenCreditLinesAndLoans"] == 0)
+        & (df["RevolvingUtilizationOfUnsecuredLines"] > 0)
+    ).astype(int)
+    df["is_inconsistent_debtratio"] = (
+        (df["MonthlyIncome"] == 0) & (df["DebtRatio"] > 1)
+    ).astype(int)
+
+    # --- 3a. RevolvingUtilizationOfUnsecuredLines : borné à 1 par définition ---
+    df["utilisation_aberrante"] = (df["RevolvingUtilizationOfUnsecuredLines"] > 1).astype(int)
+    df["RevolvingUtilizationOfUnsecuredLines"] = df[
+        "RevolvingUtilizationOfUnsecuredLines"
+    ].clip(upper=1)
+
+    # --- 3b. age == 0 : valeur impossible, remplacée par la médiane du train ---
+    if is_train:
+        stats["age_median"] = df["age"].median()
+    df["age"] = df["age"].replace(0, stats["age_median"])
+
+    # --- 3c. Compteurs de retard : 96/98 sont des codes système, pas de vrais comptages ---
+    df["retard_code_suspect"] = df[LATE_COLS].isin([96, 98]).any(axis=1).astype(int)
+    if is_train:
+        non_suspect = df.loc[df["retard_code_suspect"] == 0]
+        stats["late_medians"] = {col: non_suspect[col].median() for col in LATE_COLS}
+    for col in LATE_COLS:
+        df.loc[df["retard_code_suspect"] == 1, col] = stats["late_medians"][col]
+
+    # --- 3d. DebtRatio : valeurs extrêmes liées à un revenu quasi nul, pas un vrai signal ---
+    df["debtratio_aberrant"] = (df["DebtRatio"] > 1).astype(int)
+    df["DebtRatio"] = df["DebtRatio"].clip(upper=1)
+
+    return df, stats
+
+
+def print_cleaning_summary(n_before_dedup, n_after_dedup, train_df, test_df):
+    full = pd.concat([train_df, test_df])
+    n = len(full)
+
+    def pct(x):
+        return f"{x} ({100 * x / n:.2f}%)"
+
+    print("=" * 80)
+    print("RESUME DU NETTOYAGE (clean_data)")
+    print("=" * 80)
+
+    print(f"\nDoublons : {n_before_dedup} lignes avant -> {n_after_dedup} lignes apres "
+          f"(suppression de {n_before_dedup - n_after_dedup} doublons)")
+
+    print("\nValeurs imputees :")
+    print(f"  MonthlyIncome_missing      = 1 pour {pct(int(full['MonthlyIncome_missing'].sum()))}")
+    print(f"  NumberOfDependents_missing = 1 pour {pct(int(full['NumberOfDependents_missing'].sum()))}")
+
+    print("\nIndicateurs de valeurs aberrantes :")
+    print(f"  utilisation_aberrante        = 1 pour {pct(int(full['utilisation_aberrante'].sum()))}")
+    print(f"  retard_code_suspect          = 1 pour {pct(int(full['retard_code_suspect'].sum()))}")
+    print(f"  debtratio_aberrant           = 1 pour {pct(int(full['debtratio_aberrant'].sum()))}")
+
+    print("\nIndicateurs d'incoherence entre colonnes :")
+    print(f"  is_inconsistent_utilization  = 1 pour {pct(int(full['is_inconsistent_utilization'].sum()))}")
+    print(f"  is_inconsistent_debtratio    = 1 pour {pct(int(full['is_inconsistent_debtratio'].sum()))}")
+
+    n_na = int(full.isna().sum().sum())
+    print(f"\nValeurs manquantes restantes (toutes colonnes confondues) : {n_na}")
+    print("-> Aucune valeur manquante restante." if n_na == 0 else "-> ATTENTION : il reste des NaN.")
+
+    util_ok = full["RevolvingUtilizationOfUnsecuredLines"].between(0, 1).all()
+    debt_ok = full["DebtRatio"].between(0, 1).all()
+    print(f"\nRevolvingUtilizationOfUnsecuredLines dans [0, 1] : {util_ok} "
+          f"(min={full['RevolvingUtilizationOfUnsecuredLines'].min()}, "
+          f"max={full['RevolvingUtilizationOfUnsecuredLines'].max()})")
+    print(f"DebtRatio dans [0, 1] : {debt_ok} "
+          f"(min={full['DebtRatio'].min()}, max={full['DebtRatio'].max()})")
+    print("=" * 80)
 
 
 def add_features(df: pd.DataFrame) -> pd.DataFrame:
@@ -50,35 +135,36 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def split_and_scale(df: pd.DataFrame):
-    X = df.drop(columns=[TARGET])
-    y = df[TARGET]
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, stratify=y, random_state=42
-    )
-
-    scale_cols = ["MonthlyIncome_log", "DebtRatio_log"]
+def scale(train_df: pd.DataFrame, test_df: pd.DataFrame, scale_cols: list):
     scaler = RobustScaler()
-    X_train[scale_cols] = scaler.fit_transform(X_train[scale_cols])
-    X_test[scale_cols] = scaler.transform(X_test[scale_cols])
-
-    train_df = X_train.copy()
-    train_df[TARGET] = y_train
-    test_df = X_test.copy()
-    test_df[TARGET] = y_test
-
+    train_df = train_df.copy()
+    test_df = test_df.copy()
+    train_df[scale_cols] = scaler.fit_transform(train_df[scale_cols])
+    test_df[scale_cols] = scaler.transform(test_df[scale_cols])
     return train_df, test_df
 
 
 def main():
     df = load_raw()
-    df = clean(df)
-    df = add_features(df)
-    train_df, test_df = split_and_scale(df)
-    train_df.to_csv(TRAIN_PATH, index=False)
-    test_df.to_csv(TEST_PATH, index=False)
-    print(f"Train: {train_df.shape}, Test: {test_df.shape}")
+
+    # 1. Doublons : supprimes avant le split (une ligne dupliquee ne doit pas se
+    # retrouver a la fois en train et en test).
+    n_before_dedup = len(df)
+    df = df.drop_duplicates()
+    n_after_dedup = len(df)
+
+    # Split AVANT toute statistique (medianes) pour eviter la fuite de donnees.
+    train_df, test_df = train_test_split(
+        df, test_size=0.2, stratify=df[TARGET], random_state=42
+    )
+
+    train_clean, stats = clean_data(train_df)
+    test_clean, _ = clean_data(test_df, stats=stats)
+
+    print_cleaning_summary(n_before_dedup, n_after_dedup, train_clean, test_clean)
+
+    # Feature engineering avance (log-transform, Hour, etc.) et scaling :
+    # etape suivante, une fois ce nettoyage valide.
 
 
 if __name__ == "__main__":
