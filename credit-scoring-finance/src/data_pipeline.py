@@ -205,7 +205,9 @@ def main():
 
     print(f"\nTrain final : {train_scaled.shape}, Test final : {test_scaled.shape}")
 
-    # Sauvegarde CSV et suite (modelisation) : etape suivante, une fois cette partie validee.
+    train_scaled.to_csv(TRAIN_PATH, index=False)
+    test_scaled.to_csv(TEST_PATH, index=False)
+    print(f"\nSauvegarde : {TRAIN_PATH} et {TEST_PATH}")
 
 
 if __name__ == "__main__":
