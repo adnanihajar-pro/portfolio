@@ -1,0 +1,51 @@
+{
+  "results": {
+    "Logistic Regression": {
+      "accuracy": 0.8041768466146793,
+      "precision": 0.21925601750547047,
+      "recall": 0.7507492507492507,
+      "f1": 0.3393925708479169,
+      "auc_pr": 0.3878812542621901
+    },
+    "XGBoost": {
+      "accuracy": 0.8473844506174906,
+      "precision": 0.24582670906200318,
+      "recall": 0.6178821178821179,
+      "f1": 0.3517202160932613,
+      "auc_pr": 0.3318444276226489
+    }
+  },
+  "best_model": "Logistic Regression",
+  "top_shap_features": [
+    "RevolvingUtilizationOfUnsecuredLines",
+    "age",
+    "TotalPastDue",
+    "MonthlyIncome_missing",
+    "DebtRatio_log",
+    "NumberOfOpenCreditLinesAndLoans",
+    "NumberOfTimes90DaysLate",
+    "NumberOfTime30-59DaysPastDueNotWorse",
+    "debtratio_aberrant",
+    "NumberOfTime60-89DaysPastDueNotWorse"
+  ],
+  "features_used": [
+    "RevolvingUtilizationOfUnsecuredLines",
+    "utilisation_aberrante",
+    "NumberOfTimes90DaysLate",
+    "NumberOfTime30-59DaysPastDueNotWorse",
+    "NumberOfTime60-89DaysPastDueNotWorse",
+    "retard_code_suspect",
+    "TotalPastDue",
+    "age",
+    "MonthlyIncome",
+    "MonthlyIncome_missing",
+    "MonthlyIncome_log",
+    "debtratio_aberrant",
+    "DebtRatio_log",
+    "NumberOfOpenCreditLinesAndLoans",
+    "is_inconsistent_utilization",
+    "is_inconsistent_debtratio"
+  ],
+  "train_rows": 119512,
+  "test_rows": 29879
+}
