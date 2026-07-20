@@ -1,0 +1,46 @@
+{
+  "results": {
+    "Ridge": {
+      "rmse": 20047.79655304928,
+      "mae": 14518.90711819693,
+      "r2": 0.9272385980418857,
+      "cv_rmse_mean": 20222.145271835678,
+      "cv_rmse_std": 2081.737318771811
+    },
+    "XGBoost": {
+      "rmse": 21736.13671875,
+      "mae": 15604.248046875,
+      "r2": 0.9144672155380249,
+      "cv_rmse_mean": 24542.69291333844,
+      "cv_rmse_std": 2775.996852647034
+    }
+  },
+  "best_model": "Ridge",
+  "top_shap_features": [
+    "GrLivArea",
+    "OverallQual",
+    "YearBuilt",
+    "2ndFlrSF",
+    "1stFlrSF",
+    "OverallCond",
+    "TotalBsmtSF",
+    "BsmtFinSF1",
+    "YearRemodAdd",
+    "Foundation_PConc"
+  ],
+  "shap_cases": {
+    "best_case": {
+      "real_price": 176000.0,
+      "predicted_price": 175998.97879770835,
+      "abs_error": 1.021202291653026
+    },
+    "worst_case": {
+      "real_price": 311500.0,
+      "predicted_price": 237000.55445383556,
+      "abs_error": 74499.44554616444
+    }
+  },
+  "n_features": 283,
+  "train_rows": 1166,
+  "test_rows": 292
+}
