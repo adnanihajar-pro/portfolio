@@ -1,0 +1,112 @@
+{
+  "cross_validation": {
+    "Logistic Regression": {
+      "auc_pr_mean": 1.0,
+      "auc_pr_std": 0.0
+    },
+    "XGBoost": {
+      "auc_pr_mean": 0.999274099883856,
+      "auc_pr_std": 0.0008850982005013975
+    }
+  },
+  "test_results": {
+    "Logistic Regression": {
+      "precision": 1.0,
+      "recall": 0.98,
+      "f1": 0.98989898989899,
+      "auc_pr": 1.0,
+      "confusion_matrix": [
+        [
+          30,
+          0
+        ],
+        [
+          1,
+          49
+        ]
+      ]
+    },
+    "XGBoost": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "auc_pr": 1.0,
+      "confusion_matrix": [
+        [
+          30,
+          0
+        ],
+        [
+          0,
+          50
+        ]
+      ]
+    }
+  },
+  "best_model": "Logistic Regression",
+  "top_shap_features": [
+    "hemo",
+    "sg",
+    "pcv",
+    "al",
+    "rbc_missing",
+    "rc",
+    "sc",
+    "bgr",
+    "htn",
+    "bp"
+  ],
+  "features_used": [
+    "age",
+    "bp",
+    "sg",
+    "al",
+    "su",
+    "bgr",
+    "bu",
+    "sc",
+    "sod",
+    "pot",
+    "hemo",
+    "pcv",
+    "wc",
+    "rc",
+    "rbc",
+    "pc",
+    "pcc",
+    "ba",
+    "htn",
+    "dm",
+    "cad",
+    "appet",
+    "pe",
+    "ane",
+    "valeur_medicale_aberrante",
+    "age_missing",
+    "bp_missing",
+    "sg_missing",
+    "al_missing",
+    "su_missing",
+    "bgr_missing",
+    "bu_missing",
+    "sc_missing",
+    "sod_missing",
+    "pot_missing",
+    "hemo_missing",
+    "pcv_missing",
+    "wc_missing",
+    "rc_missing",
+    "rbc_missing",
+    "pc_missing",
+    "pcc_missing",
+    "ba_missing",
+    "htn_missing",
+    "dm_missing",
+    "cad_missing",
+    "appet_missing",
+    "pe_missing",
+    "ane_missing"
+  ],
+  "train_rows": 320,
+  "test_rows": 80
+}
