@@ -1,5 +1,9 @@
 # Health
 
-Dossier réservé aux futurs projets de data science liés à la santé.
+Projets de data science appliqués au secteur de la santé.
 
-Aucun projet n'y est encore publié.
+## Projets
+
+- [`kidney-disease-healthcare/`](kidney-disease-healthcare/) — prédiction de maladie
+  rénale chronique (Chronic Kidney Disease) à partir de données cliniques (Kaggle,
+  `mansoordaku/ckdisease`, 400 patients, 25 variables).
