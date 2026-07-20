@@ -1,0 +1,39 @@
+{
+  "results": {
+    "Random Forest": {
+      "precision": 0.5541871921182266,
+      "recall": 0.6048387096774194,
+      "f1": 0.5784061696658098,
+      "auc_pr": 0.5876520731466511
+    },
+    "CatBoost": {
+      "precision": 0.5473887814313346,
+      "recall": 0.760752688172043,
+      "f1": 0.6366704161979753,
+      "auc_pr": 0.6576398296836815
+    }
+  },
+  "best_model": "CatBoost",
+  "top_shap_features": [
+    "Contract",
+    "InternetService",
+    "tenure",
+    "TotalCharges",
+    "PaymentMethod",
+    "PaperlessBilling",
+    "MonthlyCharges",
+    "StreamingMovies",
+    "MultipleLines",
+    "OnlineSecurity"
+  ],
+  "shap_cases": {
+    "high_risk": {
+      "proba_churn": 0.963426928967682
+    },
+    "borderline": {
+      "proba_churn": 0.5000080087845891
+    }
+  },
+  "train_rows": 5616,
+  "test_rows": 1405
+}
